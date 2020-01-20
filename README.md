@@ -3,7 +3,7 @@
 [![crates.io](https://img.shields.io/crates/v/ds18b20.svg)](https://crates.io/crates/ds18b20)
 [![API](https://docs.rs/ds18b20/badge.svg)](https://docs.rs/ds18b20)
 
-A Rust [DS18B20](https://www.taydaelectronics.com/datasheets/A-072.pdf) temperature sensor drivers for [embedded-hal](https://github.com/rust-embedded/embedded-hal) 
+A Rust [DS18B20](https://www.taydaelectronics.com/datasheets/A-072.pdf) temperature sensor driver for [embedded-hal](https://github.com/rust-embedded/embedded-hal) 
 
 This device uses the 1-wire protocol, and requires using the [one-wire-bus](https://crates.io/crates/one-wire-bus)
 library for the 1-wire bus.

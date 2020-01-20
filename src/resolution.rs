@@ -31,7 +31,7 @@ impl Resolution {
             0b00111111 => Some(Resolution::Bits10),
             0b01011111 => Some(Resolution::Bits11),
             0b01111111 => Some(Resolution::Bits12),
-            _ => None
+            _ => None,
         }
     }
 

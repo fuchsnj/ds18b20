@@ -45,6 +45,11 @@ impl Ds18b20 {
         }
     }
 
+    /// Returns the device address
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+
     /// Starts a temperature measurement for just this device
     /// You should wait for the measurement to finish before reading the measurement.
     /// The amount of time you need to wait depends on the current resolution configuration

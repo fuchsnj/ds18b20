@@ -66,6 +66,20 @@ impl Ds18b20 {
         Ok(())
     }
 
+    /// Read and return the raw scratchpad data (after checking the CRC).
+    pub fn read_scratchpad<T, E>(
+        &self,
+        onewire: &mut OneWire<T>,
+        delay: &mut impl DelayUs<u16>,
+    ) -> OneWireResult<[u8; 9], E>
+    where
+        T: InputPin<Error = E>,
+        T: OutputPin<Error = E>,
+    {
+        let scratchpad = read_scratchpad(&self.address, onewire, delay)?;
+        Ok(scratchpad)
+    }
+
     pub fn read_data<T, E>(
         &self,
         onewire: &mut OneWire<T>,
@@ -162,6 +176,7 @@ where
     save_to_eeprom(None, onewire, delay)
 }
 
+/// Read and return the raw scratchpad data (after checking the CRC).
 pub fn read_scratchpad<T, E>(
     address: &Address,
     onewire: &mut OneWire<T>,

@@ -1,11 +1,12 @@
 #![no_std]
 
-//! # Test Test
+//! This crate provides a driver for the DS18B20 digital one-wire temperature sensor.
 
 use embedded_hal::blocking::delay::DelayUs;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use one_wire_bus::{self, Address, OneWire, OneWireError, OneWireResult};
 
+/// The DS18B20 family code.
 pub const FAMILY_CODE: u8 = 0x28;
 
 pub mod commands;
@@ -30,6 +31,7 @@ pub struct SensorData {
     pub alarm_temp_high: i8,
 }
 
+/// Wrap a DS18B20 sensor.
 pub struct Ds18b20 {
     address: Address,
 }

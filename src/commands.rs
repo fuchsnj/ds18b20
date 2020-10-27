@@ -1,3 +1,5 @@
+//! Command bytes that can be sent to the sensor.
+
 pub const CONVERT_TEMP: u8 = 0x44;
 pub const WRITE_SCRATCHPAD: u8 = 0x4E;
 pub const READ_SCRATCHPAD: u8 = 0xBE;

@@ -1,7 +1,5 @@
 #![no_std]
 
-use embedded_hal_compat::{ForwardCompat, ReverseCompat};
-
 use embedded_hal::delay::DelayUs;
 use embedded_hal::digital::{InputPin, OutputPin};
 use one_wire_bus::{self, Address, OneWire, OneWireError, OneWireResult};
@@ -62,7 +60,7 @@ impl Ds18b20 {
         T: InputPin<Error = E>,
         T: OutputPin<Error = E>,
     {
-        onewire.send_command(commands::CONVERT_TEMP, Some(&self.address), delay.reverse())?;
+        onewire.send_command(commands::CONVERT_TEMP, Some(&self.address), delay)?;
         Ok(())
     }
 
@@ -75,7 +73,7 @@ impl Ds18b20 {
         T: InputPin<Error = E>,
         T: OutputPin<Error = E>,
     {
-        let data = read_data(&self.address, onewire, delay.reverse())?;
+        let data = read_data(&self.address, onewire, delay)?;
         Ok(data)
     }
 

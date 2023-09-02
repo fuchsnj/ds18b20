@@ -1,9 +1,7 @@
 #![no_std]
 
-//! # Test Test
-
-use embedded_hal::blocking::delay::DelayUs;
-use embedded_hal::digital::v2::{InputPin, OutputPin};
+use embedded_hal::delay::DelayUs;
+use embedded_hal::digital::{InputPin, OutputPin};
 use one_wire_bus::{self, Address, OneWire, OneWireError, OneWireResult};
 
 pub const FAMILY_CODE: u8 = 0x28;
@@ -56,7 +54,7 @@ impl Ds18b20 {
     pub fn start_temp_measurement<T, E>(
         &self,
         onewire: &mut OneWire<T>,
-        delay: &mut impl DelayUs<u16>,
+        delay: &mut impl DelayUs,
     ) -> OneWireResult<(), E>
     where
         T: InputPin<Error = E>,
@@ -69,7 +67,7 @@ impl Ds18b20 {
     pub fn read_data<T, E>(
         &self,
         onewire: &mut OneWire<T>,
-        delay: &mut impl DelayUs<u16>,
+        delay: &mut impl DelayUs,
     ) -> OneWireResult<SensorData, E>
     where
         T: InputPin<Error = E>,
@@ -85,7 +83,7 @@ impl Ds18b20 {
         alarm_temp_high: i8,
         resolution: Resolution,
         onewire: &mut OneWire<T>,
-        delay: &mut impl DelayUs<u16>,
+        delay: &mut impl DelayUs,
     ) -> OneWireResult<(), E>
     where
         T: InputPin<Error = E>,
@@ -101,7 +99,7 @@ impl Ds18b20 {
     pub fn save_to_eeprom<T, E>(
         &self,
         onewire: &mut OneWire<T>,
-        delay: &mut impl DelayUs<u16>,
+        delay: &mut impl DelayUs,
     ) -> OneWireResult<(), E>
     where
         T: InputPin<Error = E>,
@@ -113,7 +111,7 @@ impl Ds18b20 {
     pub fn recall_from_eeprom<T, E>(
         &self,
         onewire: &mut OneWire<T>,
-        delay: &mut impl DelayUs<u16>,
+        delay: &mut impl DelayUs,
     ) -> OneWireResult<(), E>
     where
         T: InputPin<Error = E>,
@@ -126,7 +124,7 @@ impl Ds18b20 {
 /// Starts a temperature measurement for all devices on this one-wire bus, simultaneously
 pub fn start_simultaneous_temp_measurement<T, E>(
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<(), E>
 where
     T: InputPin<Error = E>,
@@ -141,7 +139,7 @@ where
 /// Read the contents of the EEPROM config to the scratchpad for all devices simultaneously.
 pub fn simultaneous_recall_from_eeprom<T, E>(
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<(), E>
 where
     T: InputPin<Error = E>,
@@ -153,7 +151,7 @@ where
 /// Read the config contents of the scratchpad memory to the EEPROMfor all devices simultaneously.
 pub fn simultaneous_save_to_eeprom<T, E>(
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<(), E>
 where
     T: InputPin<Error = E>,
@@ -165,7 +163,7 @@ where
 pub fn read_scratchpad<T, E>(
     address: &Address,
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<[u8; 9], E>
 where
     T: InputPin<Error = E>,
@@ -183,7 +181,7 @@ where
 fn read_data<T, E>(
     address: &Address,
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<SensorData, E>
 where
     T: InputPin<Error = E>,
@@ -196,7 +194,7 @@ where
     } else {
         return Err(OneWireError::CrcMismatch);
     };
-    let raw_temp = u16::from_le_bytes([scratchpad[0], scratchpad[1]]);
+    let raw_temp = i16::from_le_bytes([scratchpad[0], scratchpad[1]]);
     let temperature = match resolution {
         Resolution::Bits12 => (raw_temp as f32) / 16.0,
         Resolution::Bits11 => (raw_temp as f32) / 8.0,
@@ -214,7 +212,7 @@ where
 fn recall_from_eeprom<T, E>(
     address: Option<&Address>,
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<(), E>
 where
     T: InputPin<Error = E>,
@@ -235,7 +233,7 @@ where
 fn save_to_eeprom<T, E>(
     address: Option<&Address>,
     onewire: &mut OneWire<T>,
-    delay: &mut impl DelayUs<u16>,
+    delay: &mut impl DelayUs,
 ) -> OneWireResult<(), E>
 where
     T: InputPin<Error = E>,

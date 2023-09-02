@@ -1,4 +1,4 @@
-use embedded_hal::blocking::delay::DelayMs;
+use embedded_hal::delay::DelayUs;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
@@ -21,8 +21,8 @@ impl Resolution {
 
     /// Blocks for the amount of time required to finished measuring temperature
     /// using this resolution
-    pub fn delay_for_measurement_time(&self, delay: &mut impl DelayMs<u16>) {
-        delay.delay_ms(self.max_measurement_time_millis());
+    pub fn delay_for_measurement_time(&self, delay: &mut impl DelayUs) {
+        delay.delay_ms(self.max_measurement_time_millis().into());
     }
 
     pub(crate) fn from_config_register(config: u8) -> Option<Resolution> {

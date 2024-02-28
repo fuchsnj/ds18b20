@@ -196,7 +196,7 @@ where
     } else {
         return Err(OneWireError::CrcMismatch);
     };
-    let raw_temp = u16::from_le_bytes([scratchpad[0], scratchpad[1]]);
+    let raw_temp = i16::from_le_bytes([scratchpad[0], scratchpad[1]]);
     let temperature = match resolution {
         Resolution::Bits12 => (raw_temp as f32) / 16.0,
         Resolution::Bits11 => (raw_temp as f32) / 8.0,

@@ -4,7 +4,7 @@
 
 use embedded_hal::delay::DelayNs;
 use embedded_hal::digital::{InputPin, OutputPin};
-use one_wire_bus::{self, Address, OneWire, OneWireError, OneWireResult};
+use one_wire_bus::{Address, OneWire, OneWireError, OneWireResult};
 
 pub const FAMILY_CODE: u8 = 0x28;
 

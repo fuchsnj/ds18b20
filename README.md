@@ -1,101 +1,88 @@
 # DS18B20 temperature sensor
-[![Build Status](https://travis-ci.org/fuchsnj/ds18b20.svg?branch=master)](https://travis-ci.org/fuchsnj/ds18b20)
+
+[![CI](https://github.com/fuchsnj/ds18b20/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fuchsnj/ds18b20/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/ds18b20.svg)](https://crates.io/crates/ds18b20)
 [![API](https://docs.rs/ds18b20/badge.svg)](https://docs.rs/ds18b20)
 
-A Rust [DS18B20](https://www.taydaelectronics.com/datasheets/A-072.pdf) temperature sensor driver for [embedded-hal](https://github.com/rust-embedded/embedded-hal) 
+A `no_std` driver for the [DS18B20 temperature sensor](https://www.analog.com/media/en/technical-documentation/data-sheets/ds18b20.pdf)
+using [embedded-hal 1.0](https://github.com/rust-embedded/embedded-hal).
 
-This device uses the 1-wire protocol, and requires using the [one-wire-bus](https://crates.io/crates/one-wire-bus)
-library for the 1-wire bus.
+## Bus setup
 
-## Quick Start
+Use your board's HAL to configure an open-drain GPIO that implements both
+`embedded_hal::digital::InputPin` and `OutputPin`, and supply a delay that
+implements `embedded_hal::delay::DelayNs`. Connect DQ to the GPIO with a pull-up
+resistor (typically 4.7 kΩ). The examples assume externally powered sensors.
 
-### Get Temperature
-```rust
-fn get_temperature<P, E>(
-    delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
-    tx: &mut impl Write,
-    one_wire_bus: &mut OneWire<P>,
-) -> OneWireResult<(), E>
-    where
-        P: OutputPin<Error=E> + InputPin<Error=E>,
-        E: Debug
-{
-    // initiate a temperature measurement for all connected devices
-    ds18b20::start_simultaneous_temp_measurement(one_wire_bus, delay)?;
+Use [one-wire-bus 1.0](https://crates.io/crates/one-wire-bus) to create the
+`OneWire` bus passed to the driver. When upgrading from `ds18b20` 0.1, update
+both bus and HAL dependencies and replace `DelayUs` and `DelayMs` with `DelayNs`.
 
-    // wait until the measurement is done. This depends on the resolution you specified
-    // If you don't know the resolution, you can obtain it from reading the sensor data,
-    // or just wait the longest time, which is the 12-bit resolution (750ms)
+```toml
+[dependencies]
+embedded-hal = "1.0.0"
+one-wire-bus = "1.0.0"
+```
+
+Add this checkout of `ds18b20` as a path dependency when trying the examples locally.
+
+## Read temperatures
+
+Pass the configured pin and delay from your board setup to `read_temperatures`.
+The callback receives each sensor's ROM address and reading, and can log the
+results or pass them to the rest of the application.
+
+```rust,no_run
+use ds18b20::{Ds18b20, Resolution, FAMILY_CODE};
+use embedded_hal::delay::DelayNs;
+use embedded_hal::digital::{InputPin, OutputPin};
+use one_wire_bus::{Address, OneWire, OneWireResult};
+
+fn read_temperatures<P: InputPin + OutputPin>(
+    pin: P,
+    delay: &mut impl DelayNs,
+    mut report: impl FnMut(Address, f32),
+) -> OneWireResult<(), P::Error> {
+    let mut bus = OneWire::new(pin)?;
+    ds18b20::start_simultaneous_temp_measurement(&mut bus, delay)?;
     Resolution::Bits12.delay_for_measurement_time(delay);
 
-    // iterate over all the devices, and report their temperature
     let mut search_state = None;
-    loop {
-        if let Some((device_address, state)) = one_wire_bus.device_search(search_state.as_ref(), false, delay)? {
-            search_state = Some(state);
-            if device_address.family_code() != ds18b20::FAMILY_CODE {
-                // skip other devices
-                continue;
-            }
-            // You will generally create the sensor once, and save it for later
-            let sensor = Ds18b20::new(device_address)?;
-
-            // contains the read temperature, as well as config info such as the resolution used
-            let sensor_data = sensor.read_data(one_wire_bus, delay)?;
-            writeln!(tx, "Device at {:?} is {}°C", device_address, sensor_data.temperature);
-        } else {
-            break;
+    while let Some((address, state)) = bus.device_search(search_state.as_ref(), false, delay)? {
+        search_state = Some(state);
+        if address.family_code() == FAMILY_CODE {
+            let sensor = Ds18b20::new(address)?;
+            let data = sensor.read_data(&mut bus, delay)?;
+            report(address, data.temperature);
         }
     }
     Ok(())
 }
 ```
 
-### Configuration
-```rust
-fn test_config<P, E>(
-    delay: &mut (impl DelayUs<u16> + DelayMs<u16>),
-    tx: &mut impl Write,
-    one_wire_bus: &mut OneWire<P>,
-) -> OneWireResult<(), E>
-    where
-        P: OutputPin<Error=E> + InputPin<Error=E>,
-        E: Debug
-{
+## Update configuration
 
-    // Find the first device on the bus (assuming they are all Ds18b20's)
-    if let Some(device_address) = one_wire_bus.devices(false, delay).next() {
-        let device_address = device_address?;
-        let device = Ds18b20::new(device_address)?;
+Use the sensor's ROM address from a bus search, and pass the initialized
+`OneWire` bus and board delay to this function. The example keeps the current
+resolution and saves the new alarm thresholds to EEPROM.
 
-        // read the initial config values (read from EEPROM by the device when it was first powered)
-        let initial_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "Initial data: {:?}", initial_data);
+```rust,no_run
+use ds18b20::{Ds18b20, SensorData};
+use embedded_hal::delay::DelayNs;
+use embedded_hal::digital::{InputPin, OutputPin};
+use one_wire_bus::{Address, OneWire, OneWireResult};
 
-        let resolution = initial_data.resolution;
+fn update_alarms<P: InputPin + OutputPin>(
+    address: Address,
+    bus: &mut OneWire<P>,
+    delay: &mut impl DelayNs,
+) -> OneWireResult<SensorData, P::Error> {
+    let sensor = Ds18b20::new(address)?;
+    let original = sensor.read_data(bus, delay)?;
+    sensor.set_config(18, 24, original.resolution, bus, delay)?;
+    sensor.save_to_eeprom(bus, delay)?;
 
-        // set new alarm values, but keep the resolution the same
-        device.set_config(18, 24, resolution, one_wire_bus, delay)?;
-
-        // confirm the new config is now in the scratchpad memory
-        let new_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "New data: {:?}", new_data);
-
-        // save the config to EEPROM to save it permanently
-        device.save_to_eeprom(one_wire_bus, delay)?;
-
-        // read the values from EEPROM back to the scratchpad to verify it was saved correctly
-        device.recall_from_eeprom(one_wire_bus, delay)?;
-        let eeprom_data = device.read_data(one_wire_bus, delay)?;
-        writeln!(tx, "EEPROM data: {:?}", eeprom_data);
-    }
-    Ok(())
+    sensor.recall_from_eeprom(bus, delay)?;
+    sensor.read_data(bus, delay)
 }
-```
-Example output
-```
-Initial data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 70, alarm_temp_high: 75 }
-New data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 18, alarm_temp_high: 24 }
-EEPROM data: SensorData { temperature: 85.0, resolution: Bits12, alarm_temp_low: 18, alarm_temp_high: 24 }
 ```
